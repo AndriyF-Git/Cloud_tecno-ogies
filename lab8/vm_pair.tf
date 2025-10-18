@@ -29,8 +29,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   name                = "az104-vm${count.index + 1}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  size = "Standard_E2s_v6"
-  #size                = local.do_vm_resize && count.index == 0 ? "Standard_D2ads_v5" : "Standard_D2as_v5"
+  size = local.do_vm_resize && count.index == 0 ? "Standard_E2ads_v6" : "Standard_E2s_v6"
   admin_username      = var.admin_username
   admin_password      = var.admin_password
   network_interface_ids = [
@@ -38,7 +37,7 @@ resource "azurerm_windows_virtual_machine" "vm" {
   ]
 
 
-  zone = count.index == 0 ? "1" : "2"
+  zone = var.zones[count.index]
 
 
   os_disk {
@@ -68,23 +67,24 @@ resource "azurerm_managed_disk" "vm1_data" {
   name                 = "vm1-disk1"
   location             = azurerm_resource_group.rg.location
   resource_group_name  = azurerm_resource_group.rg.name
-  storage_account_type = local.do_vm_resize ? "StandardSSD_LRS" : "Standard_LRS" # step-up when lab_phase=vm_resized
+  storage_account_type = local.data_disk_sku   # <- головне
   create_option        = "Empty"
   disk_size_gb         = 32
-  zone = "1"
+  zone = var.zones[0]
   tags                 = local.tags
-   lifecycle { 
-    create_before_destroy = true 
-    }
+  # lifecycle НЕ потрібен — зміна Standard_LRS -> StandardSSD_LRS пройде in-place,
+  # але диск має бути від’єднаний у фазі vm_detach.
 }
+
 
 
 
 # When lab_phase=vm_pair → attach once (HDD). When lab_phase=vm_resized → reattach the upgraded SSD.
 resource "azurerm_virtual_machine_data_disk_attachment" "vm1_attach" {
-  count              = 0 #local.do_vm_pair ? 1 : 0
+  count              = local.attach_disk && local.do_vm_pair ? 1 : 0
   managed_disk_id    = azurerm_managed_disk.vm1_data[0].id
   virtual_machine_id = azurerm_windows_virtual_machine.vm[0].id
   lun                = 0
   caching            = "ReadOnly"
 }
+

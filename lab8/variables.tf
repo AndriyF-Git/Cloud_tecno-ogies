@@ -7,7 +7,7 @@ variable "subscription_id" {
 variable "location" {
   description = "Lab region"
   type        = string
-  default     = "eastus"
+  default     = "polandcentral"
 }
 
 variable "rg_name" {
@@ -27,10 +27,15 @@ variable "admin_password" {
   description = "Secure password for Windows VMs (set via tfvars or TF_VAR_admin_password)"
 }
 
+variable "zones" {
+  type    = list(string)
+  default = ["1","2"]
+}
+
 variable "lab_phase" {
   description = "What to deploy: vm_pair | vm_resized | vmss | vmss_autoscale"
   type        = string
-  default     = "vm_pair"
+  default     = "vmss_autoscale"
   validation {
     condition     = contains(["vm_pair", "vm_resized", "vmss", "vmss_autoscale"], var.lab_phase)
     error_message = "lab_phase must be one of: vm_pair, vm_resized, vmss, vmss_autoscale"
